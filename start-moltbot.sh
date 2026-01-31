@@ -241,8 +241,10 @@ if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
 // Usage: Set AI_GATEWAY_BASE_URL or ANTHROPIC_BASE_URL to your endpoint like:
 //   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/anthropic
 //   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openai
+//   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openrouter
 const baseUrl = (process.env.AI_GATEWAY_BASE_URL || process.env.ANTHROPIC_BASE_URL || '').replace(/\/+$/, '');
 const isOpenAI = baseUrl.endsWith('/openai');
+const isOpenRouter = baseUrl.endsWith('/openrouter');
 
 if (isOpenAI) {
     // Create custom openai provider config with baseUrl override
@@ -265,7 +267,25 @@ if (isOpenAI) {
     config.agents.defaults.models['openai/gpt-5'] = { alias: 'GPT-5' };
     config.agents.defaults.models['openai/gpt-4.5-preview'] = { alias: 'GPT-4.5' };
     config.agents.defaults.model.primary = 'openai/gpt-5.2';
+} else if (isOpenRouter) {
+    // OpenRouter endpoint (OpenAI-compatible format)
+    // Omit apiKey so moltbot falls back to OPENAI_API_KEY env var
+    console.log('Configuring OpenRouter provider with base URL:', baseUrl);
+    config.models = config.models || {};
+    config.models.providers = config.models.providers || {};
+    config.models.providers.openai = {
+        baseUrl: baseUrl,
+        api: 'openai-responses',
+        models: [
+            { id: 'moonshotai/kimi-k2.5', name: 'Kimi 2.5', contextWindow: 262144 },
+        ]
+    };
+    // Add models to the allowlist so they appear in /models
+    config.agents.defaults.models = config.agents.defaults.models || {};
+    config.agents.defaults.models['openai/moonshotai/kimi-k2.5'] = { alias: 'Kimi 2.5' };
+    config.agents.defaults.model.primary = 'openai/moonshotai/kimi-k2.5';
 } else if (baseUrl) {
+
     console.log('Configuring Anthropic provider with base URL:', baseUrl);
     config.models = config.models || {};
     config.models.providers = config.models.providers || {};
