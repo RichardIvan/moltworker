@@ -61,5 +61,11 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   if (env.CDP_SECRET) envVars.CDP_SECRET = env.CDP_SECRET;
   if (env.WORKER_URL) envVars.WORKER_URL = env.WORKER_URL;
 
+  // GitLab/Git integration for coding agent capabilities
+  if (env.GITLAB_TOKEN) envVars.GITLAB_TOKEN = env.GITLAB_TOKEN;
+  if (env.GIT_USER_NAME) envVars.GIT_USER_NAME = env.GIT_USER_NAME;
+  if (env.GIT_USER_EMAIL) envVars.GIT_USER_EMAIL = env.GIT_USER_EMAIL;
+  if (env.GITLAB_REPO_URL) envVars.GITLAB_REPO_URL = env.GITLAB_REPO_URL;
+
   return envVars;
 }

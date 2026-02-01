@@ -39,6 +39,11 @@ export interface MoltbotEnv {
   BROWSER?: Fetcher;
   CDP_SECRET?: string; // Shared secret for CDP endpoint authentication
   WORKER_URL?: string; // Public URL of the worker (for CDP endpoint)
+  // GitLab/Git integration for coding agent capabilities
+  GITLAB_TOKEN?: string; // GitLab PAT with 'api' + 'write_repository' scopes
+  GIT_USER_NAME?: string; // Git commit author name
+  GIT_USER_EMAIL?: string; // Git commit author email
+  GITLAB_REPO_URL?: string; // Repository URL to clone (HTTPS format)
 }
 
 /**

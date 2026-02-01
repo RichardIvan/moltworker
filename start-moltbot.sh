@@ -275,17 +275,20 @@ if (isOpenAI) {
     config.models.providers = config.models.providers || {};
     config.models.providers.openai = {
         baseUrl: baseUrl,
-        api: 'openai-responses',
+        api: 'openai-chat',
         models: [
+            { id: 'deepseek/deepseek-v3.2', name: 'DeepSeek V3.2', contextWindow: 163840 },
             { id: 'moonshotai/kimi-k2.5', name: 'Kimi 2.5', contextWindow: 262144 },
+            { id: 'google/gemma-3-27b-it', name: 'Gemma 3 27B', contextWindow: 131072 },
         ]
     };
     // Add models to the allowlist so they appear in /models
     config.agents.defaults.models = config.agents.defaults.models || {};
+    config.agents.defaults.models['openai/deepseek/deepseek-v3.2'] = { alias: 'DeepSeek V3.2' };
     config.agents.defaults.models['openai/moonshotai/kimi-k2.5'] = { alias: 'Kimi 2.5' };
-    config.agents.defaults.model.primary = 'openai/moonshotai/kimi-k2.5';
+    config.agents.defaults.models['openai/google/gemma-3-27b-it'] = { alias: 'Gemma 3' };
+    config.agents.defaults.model.primary = 'openai/deepseek/deepseek-v3.2';
 } else if (baseUrl) {
-
     console.log('Configuring Anthropic provider with base URL:', baseUrl);
     config.models = config.models || {};
     config.models.providers = config.models.providers || {};
@@ -319,6 +322,31 @@ fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 console.log('Configuration updated successfully');
 console.log('Config:', JSON.stringify(config, null, 2));
 EOFNODE
+
+# ============================================================
+# GITLAB/GIT SETUP
+# ============================================================
+if [ -n "$GITLAB_TOKEN" ]; then
+    echo "Configuring Git for GitLab..."
+    
+    # Configure git identity
+    git config --global user.name "${GIT_USER_NAME:-OpenClaw Agent}"
+    git config --global user.email "${GIT_USER_EMAIL:-agent@openclaw.local}"
+    
+    # Configure git credentials for GitLab (oauth2 token format)
+    git config --global credential.helper store
+    echo "https://oauth2:${GITLAB_TOKEN}@gitlab.com" > ~/.git-credentials
+    chmod 600 ~/.git-credentials
+    
+    # Authenticate glab CLI (glab is installed in Docker image)
+    echo "$GITLAB_TOKEN" | glab auth login --stdin --hostname gitlab.com 2>/dev/null || true
+    
+    # Clone repository if URL provided and not already cloned
+    # Note: Agent clones manually, R2 persists across restarts
+    # This just ensures credentials are ready for when the agent needs them
+    
+    echo "GitLab setup complete!"
+fi
 
 # ============================================================
 # START GATEWAY
