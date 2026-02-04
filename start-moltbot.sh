@@ -105,6 +105,21 @@ if [ -d "$BACKUP_DIR/skills" ] && [ "$(ls -A $BACKUP_DIR/skills 2>/dev/null)" ];
     fi
 fi
 
+# ============================================================
+# RESTORE WORKSPACE PERSONA FILES FROM R2
+# ============================================================
+# These are the critical persona files (SOUL.md, USER.md, MEMORY.md, etc.)
+# synced via whitelist approach to avoid large file issues
+WORKSPACE_DIR="/root/clawd"
+if [ -d "$BACKUP_DIR/workspace" ] && [ "$(ls -A $BACKUP_DIR/workspace 2>/dev/null)" ]; then
+    if should_restore_from_r2; then
+        echo "Restoring workspace persona files from R2..."
+        mkdir -p "$WORKSPACE_DIR"
+        cp -a "$BACKUP_DIR/workspace/"*.md "$WORKSPACE_DIR/" 2>/dev/null || true
+        echo "Restored persona files from R2 backup"
+    fi
+fi
+
 # If config file still doesn't exist, create from template
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "No existing config found, initializing from template..."

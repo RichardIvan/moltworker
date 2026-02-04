@@ -43,15 +43,15 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
     await waitForProcess(checkProc, 5000);
     const checkLogs = await checkProc.getLogs();
     if (!checkLogs.stdout?.includes('ok')) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: 'Sync aborted: source missing clawdbot.json',
         details: 'The local config directory is missing critical files. This could indicate corruption or an incomplete setup.',
       };
     }
   } catch (err) {
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: 'Failed to verify source files',
       details: err instanceof Error ? err.message : 'Unknown error',
     };
@@ -59,8 +59,16 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
 
   // Run rsync to backup config to R2
   // Note: Use --no-times because s3fs doesn't support setting timestamps
-  const syncCmd = `rsync -r --no-times --delete --exclude='*.lock' --exclude='*.log' --exclude='*.tmp' /root/.clawdbot/ ${R2_MOUNT_PATH}/clawdbot/ && rsync -r --no-times --delete /root/clawd/skills/ ${R2_MOUNT_PATH}/skills/ && date -Iseconds > ${R2_MOUNT_PATH}/.last-sync`;
-  
+  // 
+  // Synced paths:
+  // - /root/.clawdbot/         → R2/clawdbot/   (gateway config)
+  // - /root/clawd/skills/      → R2/skills/    (custom skills)
+  // - /root/clawd/*.md         → R2/workspace/ (persona files - whitelist approach)
+  //
+  // We use a whitelist for workspace files to avoid syncing large repos/builds
+  // that could cause timeout issues. Only critical persona files are synced.
+  const syncCmd = `rsync -r --no-times --delete --exclude='*.lock' --exclude='*.log' --exclude='*.tmp' /root/.clawdbot/ ${R2_MOUNT_PATH}/clawdbot/ && rsync -r --no-times --delete /root/clawd/skills/ ${R2_MOUNT_PATH}/skills/ && mkdir -p ${R2_MOUNT_PATH}/workspace && rsync --no-times --include='SOUL.md' --include='USER.md' --include='MEMORY.md' --include='IDENTITY.md' --include='HEARTBEAT.md' --include='TOOLS.md' --include='AGENTS.md' --exclude='*' /root/clawd/ ${R2_MOUNT_PATH}/workspace/ && date -Iseconds > ${R2_MOUNT_PATH}/.last-sync`;
+
   try {
     const proc = await sandbox.startProcess(syncCmd);
     await waitForProcess(proc, 30000); // 30 second timeout for sync
@@ -72,7 +80,7 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
     await waitForProcess(timestampProc, 5000);
     const timestampLogs = await timestampProc.getLogs();
     const lastSync = timestampLogs.stdout?.trim();
-    
+
     if (lastSync && lastSync.match(/^\d{4}-\d{2}-\d{2}/)) {
       return { success: true, lastSync };
     } else {
@@ -84,8 +92,8 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
       };
     }
   } catch (err) {
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: 'Sync error',
       details: err instanceof Error ? err.message : 'Unknown error',
     };
