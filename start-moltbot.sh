@@ -1,5 +1,6 @@
 #!/bin/bash
 # Startup script for Moltbot in Cloudflare Sandbox
+# Force rebuild: 2026-02-02T14:51
 # This script:
 # 1. Restores config from R2 backup if available
 # 2. Configures moltbot from environment variables
@@ -109,16 +110,51 @@ fi
 # RESTORE WORKSPACE PERSONA FILES FROM R2
 # ============================================================
 # These are the critical persona files (SOUL.md, USER.md, MEMORY.md, etc.)
-# synced via whitelist approach to avoid large file issues
+# plus memory/, tov/, and assets/ directories
 WORKSPACE_DIR="/root/clawd"
 if [ -d "$BACKUP_DIR/workspace" ] && [ "$(ls -A $BACKUP_DIR/workspace 2>/dev/null)" ]; then
     if should_restore_from_r2; then
         echo "Restoring workspace persona files from R2..."
         mkdir -p "$WORKSPACE_DIR"
+        # Restore persona markdown files
         cp -a "$BACKUP_DIR/workspace/"*.md "$WORKSPACE_DIR/" 2>/dev/null || true
+        # Restore memory/ (daily notes)
+        if [ -d "$BACKUP_DIR/workspace/memory" ]; then
+            mkdir -p "$WORKSPACE_DIR/memory"
+            cp -a "$BACKUP_DIR/workspace/memory/." "$WORKSPACE_DIR/memory/" 2>/dev/null || true
+        fi
+        # Restore tov/ (tone of voice)
+        if [ -d "$BACKUP_DIR/workspace/tov" ]; then
+            mkdir -p "$WORKSPACE_DIR/tov"
+            cp -a "$BACKUP_DIR/workspace/tov/." "$WORKSPACE_DIR/tov/" 2>/dev/null || true
+        fi
+        # Restore assets/ (avatar, images)
+        if [ -d "$BACKUP_DIR/workspace/assets" ]; then
+            mkdir -p "$WORKSPACE_DIR/assets"
+            cp -a "$BACKUP_DIR/workspace/assets/." "$WORKSPACE_DIR/assets/" 2>/dev/null || true
+        fi
         echo "Restored persona files from R2 backup"
     fi
 fi
+
+# ============================================================
+# REPOS DIRECTORY (LOCAL - GitLab is persistence layer)
+# ============================================================
+# Repos are stored locally for fast git operations.
+# Persistence is handled by GitLab via auto-commit/push every 5 minutes.
+# On container restart: just reclone and checkout the backup branch.
+# This avoids R2 FUSE mount issues that caused git operations to hang.
+REPOS_DIR="/root/clawd/repos"
+
+# Remove any existing R2 symlink (migration from old approach)
+if [ -L "$REPOS_DIR" ]; then
+    echo "Removing old R2 symlink for repos..."
+    rm -f "$REPOS_DIR"
+fi
+
+# Create local repos directory
+mkdir -p "$REPOS_DIR"
+echo "Repos directory ready at $REPOS_DIR (GitLab is persistence layer)"
 
 # If config file still doesn't exist, create from template
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -178,7 +214,12 @@ if (config.models?.providers?.anthropic?.models) {
     }
 }
 
-
+// Clean up invalid openai.api values from R2 backup
+// 'openai-chat' is not valid in clawdbot schema - use 'openai-completions' for OpenRouter
+if (config.models?.providers?.openai?.api === 'openai-chat') {
+    console.log('Fixing invalid openai.api value: openai-chat -> openai-completions');
+    config.models.providers.openai.api = 'openai-completions';
+}
 
 // Gateway configuration
 config.gateway.port = 18789;
@@ -275,7 +316,7 @@ if (isOpenAI) {
     config.models.providers = config.models.providers || {};
     config.models.providers.openai = {
         baseUrl: baseUrl,
-        api: 'openai-chat',
+        api: 'openai-completions',
         models: [
             { id: 'deepseek/deepseek-v3.2', name: 'DeepSeek V3.2', contextWindow: 163840 },
             { id: 'moonshotai/kimi-k2.5', name: 'Kimi 2.5', contextWindow: 262144 },
