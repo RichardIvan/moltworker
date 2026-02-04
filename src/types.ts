@@ -45,6 +45,8 @@ export interface MoltbotEnv {
   GIT_USER_EMAIL?: string; // Git commit author email
   GITLAB_REPO_URL?: string; // Repository URL to clone (HTTPS format)
   BRAVE_API_KEY?: string; // Brave Search API key for web search
+  // AI Gateway BYOK mode (Provider Keys)
+  CF_AIG_AUTHORIZATION?: string; // Key ID from AI Gateway Provider Keys (enables BYOK mode)
 }
 
 /**

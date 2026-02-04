@@ -73,5 +73,8 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   // Web search capability
   if (env.BRAVE_API_KEY) envVars.BRAVE_API_KEY = env.BRAVE_API_KEY;
 
+  // AI Gateway BYOK authorization (Key ID for Provider Keys)
+  if (env.CF_AIG_AUTHORIZATION) envVars.CF_AIG_AUTHORIZATION = env.CF_AIG_AUTHORIZATION;
+
   return envVars;
 }
