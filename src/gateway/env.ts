@@ -14,7 +14,6 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   const isOpenAIGateway = normalizedBaseUrl?.endsWith('/openai') ||
     normalizedBaseUrl?.endsWith('/openrouter') ||
     normalizedBaseUrl?.endsWith('/fireworks') ||
-    normalizedBaseUrl?.endsWith('/custom-fireworks') ||
     normalizedBaseUrl?.includes('fireworks.ai');
 
   // AI Gateway vars take precedence
@@ -27,10 +26,18 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
     } else {
       envVars.ANTHROPIC_API_KEY = env.AI_GATEWAY_API_KEY;
     }
+  } else if (normalizedBaseUrl) {
+    // BYOK (Provider Keys) mode: AI Gateway injects the real API key at request time
+    // OpenClaw still needs a placeholder to pass validation
+    if (isOpenAIGateway) {
+      envVars.OPENAI_API_KEY = 'BYOK-AI-GATEWAY-INJECTED';
+    } else {
+      envVars.ANTHROPIC_API_KEY = 'BYOK-AI-GATEWAY-INJECTED';
+    }
   }
 
   // Fall back to direct provider keys ONLY when not using AI Gateway
-  if (!env.AI_GATEWAY_API_KEY) {
+  if (!env.AI_GATEWAY_API_KEY && !normalizedBaseUrl) {
     if (env.ANTHROPIC_API_KEY) {
       envVars.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
     }
@@ -72,9 +79,6 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
 
   // Web search capability
   if (env.BRAVE_API_KEY) envVars.BRAVE_API_KEY = env.BRAVE_API_KEY;
-
-  // AI Gateway BYOK authorization (Key ID for Provider Keys)
-  if (env.CF_AIG_AUTHORIZATION) envVars.CF_AIG_AUTHORIZATION = env.CF_AIG_AUTHORIZATION;
 
   return envVars;
 }
