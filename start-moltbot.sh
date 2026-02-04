@@ -430,6 +430,10 @@ rm -f "$CONFIG_DIR/gateway.lock" 2>/dev/null || true
 BIND_MODE="lan"
 echo "Dev mode: ${CLAWDBOT_DEV_MODE:-false}, Bind mode: $BIND_MODE"
 
+# Enable fetch interceptor for AI Gateway cost tracking
+# This adds the cf-aig-custom-cost header to requests going through custom providers
+export NODE_OPTIONS="--require /usr/local/lib/fetch-cost-interceptor.cjs"
+
 if [ -n "$CLAWDBOT_GATEWAY_TOKEN" ]; then
     echo "Starting gateway with token auth..."
     exec clawdbot gateway --port 18789 --verbose --allow-unconfigured --bind "$BIND_MODE" --token "$CLAWDBOT_GATEWAY_TOKEN"
