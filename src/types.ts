@@ -44,6 +44,7 @@ export interface MoltbotEnv {
   GIT_USER_NAME?: string; // Git commit author name
   GIT_USER_EMAIL?: string; // Git commit author email
   GITLAB_REPO_URL?: string; // Repository URL to clone (HTTPS format)
+  BRAVE_API_KEY?: string; // Brave Search API key for web search
 }
 
 /**

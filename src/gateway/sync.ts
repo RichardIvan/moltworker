@@ -63,11 +63,14 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
   // Synced paths:
   // - /root/.clawdbot/         → R2/clawdbot/   (gateway config)
   // - /root/clawd/skills/      → R2/skills/    (custom skills)
-  // - /root/clawd/*.md         → R2/workspace/ (persona files - whitelist approach)
+  // - /root/clawd/*.md         → R2/workspace/ (persona files)
+  // - /root/clawd/memory/      → R2/workspace/memory/ (daily notes)
+  // - /root/clawd/tov/         → R2/workspace/tov/ (tone of voice)
+  // - /root/clawd/assets/      → R2/workspace/assets/ (avatar, images)
   //
   // We use a whitelist for workspace files to avoid syncing large repos/builds
   // that could cause timeout issues. Only critical persona files are synced.
-  const syncCmd = `rsync -r --no-times --delete --exclude='*.lock' --exclude='*.log' --exclude='*.tmp' /root/.clawdbot/ ${R2_MOUNT_PATH}/clawdbot/ && rsync -r --no-times --delete /root/clawd/skills/ ${R2_MOUNT_PATH}/skills/ && mkdir -p ${R2_MOUNT_PATH}/workspace && rsync --no-times --include='SOUL.md' --include='USER.md' --include='MEMORY.md' --include='IDENTITY.md' --include='HEARTBEAT.md' --include='TOOLS.md' --include='AGENTS.md' --exclude='*' /root/clawd/ ${R2_MOUNT_PATH}/workspace/ && date -Iseconds > ${R2_MOUNT_PATH}/.last-sync`;
+  const syncCmd = `rsync -r --no-times --delete --exclude='*.lock' --exclude='*.log' --exclude='*.tmp' /root/.clawdbot/ ${R2_MOUNT_PATH}/clawdbot/ && rsync -r --no-times --delete /root/clawd/skills/ ${R2_MOUNT_PATH}/skills/ && mkdir -p ${R2_MOUNT_PATH}/workspace ${R2_MOUNT_PATH}/workspace/memory ${R2_MOUNT_PATH}/workspace/tov ${R2_MOUNT_PATH}/workspace/assets && rsync --no-times --include='SOUL.md' --include='USER.md' --include='MEMORY.md' --include='IDENTITY.md' --include='HEARTBEAT.md' --include='TOOLS.md' --include='AGENTS.md' --exclude='*' /root/clawd/ ${R2_MOUNT_PATH}/workspace/ && rsync -r --no-times --delete /root/clawd/memory/ ${R2_MOUNT_PATH}/workspace/memory/ 2>/dev/null || true && rsync -r --no-times --delete /root/clawd/tov/ ${R2_MOUNT_PATH}/workspace/tov/ 2>/dev/null || true && rsync -r --no-times --delete /root/clawd/assets/ ${R2_MOUNT_PATH}/workspace/assets/ 2>/dev/null || true && date -Iseconds > ${R2_MOUNT_PATH}/.last-sync`;
 
   try {
     const proc = await sandbox.startProcess(syncCmd);

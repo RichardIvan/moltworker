@@ -67,5 +67,8 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   if (env.GIT_USER_EMAIL) envVars.GIT_USER_EMAIL = env.GIT_USER_EMAIL;
   if (env.GITLAB_REPO_URL) envVars.GITLAB_REPO_URL = env.GITLAB_REPO_URL;
 
+  // Web search capability
+  if (env.BRAVE_API_KEY) envVars.BRAVE_API_KEY = env.BRAVE_API_KEY;
+
   return envVars;
 }
