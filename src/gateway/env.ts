@@ -27,10 +27,19 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
     } else {
       envVars.ANTHROPIC_API_KEY = env.AI_GATEWAY_API_KEY;
     }
+  } else if (normalizedBaseUrl && env.AI_GATEWAY_API_KEY) {
+    // BYOK mode: AI_GATEWAY_API_KEY is required (set via wrangler secret)
+    // The fetch interceptor will REMOVE the Authorization header when CF_AIG_AUTHORIZATION is set
+    // Gateway then injects the real Provider Key
+    if (isOpenAIGateway) {
+      envVars.OPENAI_API_KEY = env.AI_GATEWAY_API_KEY;
+    } else {
+      envVars.ANTHROPIC_API_KEY = env.AI_GATEWAY_API_KEY;
+    }
   }
 
   // Fall back to direct provider keys ONLY when not using AI Gateway
-  if (!env.AI_GATEWAY_API_KEY) {
+  if (!env.AI_GATEWAY_API_KEY && !normalizedBaseUrl) {
     if (env.ANTHROPIC_API_KEY) {
       envVars.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
     }
@@ -64,6 +73,9 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   if (env.CDP_SECRET) envVars.CDP_SECRET = env.CDP_SECRET;
   if (env.WORKER_URL) envVars.WORKER_URL = env.WORKER_URL;
 
+  // AI Gateway BYOK authorization (Key ID for Provider Keys)
+  if (env.CF_AIG_AUTHORIZATION) envVars.CF_AIG_AUTHORIZATION = env.CF_AIG_AUTHORIZATION;
+
   // GitLab/Git integration for coding agent capabilities
   if (env.GITLAB_TOKEN) envVars.GITLAB_TOKEN = env.GITLAB_TOKEN;
   if (env.GIT_USER_NAME) envVars.GIT_USER_NAME = env.GIT_USER_NAME;
@@ -72,9 +84,6 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
 
   // Web search capability
   if (env.BRAVE_API_KEY) envVars.BRAVE_API_KEY = env.BRAVE_API_KEY;
-
-  // AI Gateway BYOK authorization (Key ID for Provider Keys)
-  if (env.CF_AIG_AUTHORIZATION) envVars.CF_AIG_AUTHORIZATION = env.CF_AIG_AUTHORIZATION;
 
   return envVars;
 }

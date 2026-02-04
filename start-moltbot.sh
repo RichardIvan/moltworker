@@ -320,9 +320,11 @@ if (isOpenAI) {
     config.models.providers.openai = {
         baseUrl: baseUrl,
         api: 'openai-completions',
-        // Note: Cost tracking via cf-aig-custom-cost header not supported by clawdbot config
-        // Use Fireworks dashboard for cost tracking: https://fireworks.ai/account
-        // Pricing: $0.56/1M input, $1.68/1M output
+        // API key from env (set via AI_GATEWAY_API_KEY secret → mapped to OPENAI_API_KEY)
+        // Fetch interceptor removes this when CF_AIG_AUTHORIZATION is set (BYOK mode)
+        apiKey: process.env.OPENAI_API_KEY,
+        // Cost tracking via cf-aig-custom-cost header (injected by fetch-cost-interceptor.cjs)
+        // Fireworks pricing: $0.56/1M input, $1.68/1M output
         models: [
             { id: 'accounts/fireworks/models/deepseek-v3p2', name: 'DeepSeek V3.2', contextWindow: 163840 },
             { id: 'accounts/fireworks/models/kimi-k2p5', name: 'Kimi K2.5', contextWindow: 262144 },
