@@ -283,9 +283,11 @@ if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
 //   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/anthropic
 //   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openai
 //   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openrouter
+//   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/fireworks (custom provider)
 const baseUrl = (process.env.AI_GATEWAY_BASE_URL || process.env.ANTHROPIC_BASE_URL || '').replace(/\/+$/, '');
 const isOpenAI = baseUrl.endsWith('/openai');
 const isOpenRouter = baseUrl.endsWith('/openrouter');
+const isFireworks = baseUrl.includes('fireworks.ai') || baseUrl.endsWith('/fireworks') || baseUrl.endsWith('/custom-fireworks');
 
 if (isOpenAI) {
     // Create custom openai provider config with baseUrl override
@@ -308,6 +310,31 @@ if (isOpenAI) {
     config.agents.defaults.models['openai/gpt-5'] = { alias: 'GPT-5' };
     config.agents.defaults.models['openai/gpt-4.5-preview'] = { alias: 'GPT-4.5' };
     config.agents.defaults.model.primary = 'openai/gpt-5.2';
+} else if (isFireworks) {
+    // Fireworks.ai endpoint (OpenAI-compatible format)
+    // Direct: https://api.fireworks.ai/inference/v1
+    // Via AI Gateway Custom Provider: https://gateway.ai.cloudflare.com/v1/{account}/{gateway}/fireworks
+    console.log('Configuring Fireworks provider with base URL:', baseUrl);
+    config.models = config.models || {};
+    config.models.providers = config.models.providers || {};
+    config.models.providers.openai = {
+        baseUrl: baseUrl,
+        api: 'openai-completions',
+        // Note: Cost tracking via cf-aig-custom-cost header not supported by clawdbot config
+        // Use Fireworks dashboard for cost tracking: https://fireworks.ai/account
+        // Pricing: $0.56/1M input, $1.68/1M output
+        models: [
+            { id: 'accounts/fireworks/models/deepseek-v3p2', name: 'DeepSeek V3.2', contextWindow: 163840 },
+            { id: 'accounts/fireworks/models/kimi-k2p5', name: 'Kimi K2.5', contextWindow: 262144 },
+            { id: 'accounts/fireworks/models/qwen3-235b-a22b', name: 'Qwen 3 235B', contextWindow: 131072 },
+        ]
+    };
+    // Add models to the allowlist so they appear in /models
+    config.agents.defaults.models = config.agents.defaults.models || {};
+    config.agents.defaults.models['openai/accounts/fireworks/models/deepseek-v3p2'] = { alias: 'DeepSeek V3.2' };
+    config.agents.defaults.models['openai/accounts/fireworks/models/kimi-k2p5'] = { alias: 'Kimi K2.5' };
+    config.agents.defaults.models['openai/accounts/fireworks/models/qwen3-235b-a22b'] = { alias: 'Qwen 3' };
+    config.agents.defaults.model.primary = 'openai/accounts/fireworks/models/deepseek-v3p2';
 } else if (isOpenRouter) {
     // OpenRouter endpoint (OpenAI-compatible format)
     // Omit apiKey so moltbot falls back to OPENAI_API_KEY env var
