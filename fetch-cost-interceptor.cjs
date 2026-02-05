@@ -1,7 +1,5 @@
 /**
- * Fetch interceptor for AI Gateway custom providers
- * 
- * This script patches global fetch to enable BYOK (Bring Your Own Key) mode:
+ * Fetch interceptor for AI Gateway BYOK (Bring Your Own Key) mode
  * 
  * BYOK Flow:
  * 1. Clawdbot validates config using placeholder API key
@@ -11,40 +9,11 @@
  * 5. Gateway receives request with NO Authorization → injects Provider Key
  * 6. Provider (Fireworks, Google AI Studio) receives the real API key
  * 
- * Headers injected:
- * - cf-aig-custom-cost: Cost tracking for AI Gateway dashboard
- * - cf-aig-authorization: Authenticates to AI Gateway (enables BYOK)
- * 
  * Usage: NODE_OPTIONS="--require /path/to/fetch-cost-interceptor.cjs" node app.js
  * 
  * Environment variables:
  * - CF_AIG_AUTHORIZATION: API token for AI Gateway authentication (required for BYOK)
  */
-
-// Provider pricing for cost tracking in AI Gateway dashboard
-// Set to 0 for free tier - Gateway will still track token usage
-//
-// Fireworks DeepSeek V3.2 serverless pricing
-// https://fireworks.ai/models/fireworks/deepseek-v3p2
-const FIREWORKS_COST = {
-    per_token_in: 0.00000056,   // $0.56 / 1M tokens
-    per_token_out: 0.00000168,  // $1.68 / 1M tokens
-};
-
-// Google AI Studio Gemini 3 Flash Preview pricing
-// https://ai.google.dev/pricing
-// Note: Set to 0 if using free tier (tokens still tracked)
-const GEMINI_COST = {
-    per_token_in: 0.0000005,    // $0.50 / 1M tokens
-    per_token_out: 0.000003,    // $3.00 / 1M tokens
-};
-
-// Free tier - set this if you're on free quota
-// Tokens will still be tracked, just no cost
-const FREE_TIER_COST = {
-    per_token_in: 0,
-    per_token_out: 0,
-};
 
 // BYOK authorization token (set via environment variable)
 const CF_AIG_AUTHORIZATION = process.env.CF_AIG_AUTHORIZATION;
@@ -54,28 +23,14 @@ const originalFetch = globalThis.fetch;
 globalThis.fetch = async function patchedFetch(input, init) {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 
-    // Only intercept requests to AI Gateway (custom providers and compat/google-ai-studio for BYOK)
+    // Only intercept requests to AI Gateway (custom providers and google-ai-studio for BYOK)
     const isAIGatewayRequest = url && url.includes('gateway.ai.cloudflare.com');
-    // /compat is the Unified API endpoint for OpenAI-compatible requests to any provider
-    const isCompatEndpoint = url && url.includes('/compat');
     const isGoogleAIStudio = url && url.includes('/google-ai-studio');
     const isCustomProvider = url && url.includes('/custom-');
-    const needsBYOK = isGoogleAIStudio || isCustomProvider || isCompatEndpoint;
+    const needsBYOK = isGoogleAIStudio || isCustomProvider;
 
     if (isAIGatewayRequest && needsBYOK) {
         const headers = new Headers(init?.headers);
-
-        // Select cost based on provider
-        // Change to FREE_TIER_COST if using free quota
-        // Note: /compat endpoint is currently only used for Google AI Studio
-        const isGeminiRequest = isGoogleAIStudio || isCompatEndpoint;
-        const cost = isGeminiRequest ? GEMINI_COST : FIREWORKS_COST;
-
-        // Add cost tracking header if not already present
-        if (!headers.has('cf-aig-custom-cost')) {
-            headers.set('cf-aig-custom-cost', JSON.stringify(cost));
-            console.log('[fetch-interceptor] Added cf-aig-custom-cost header:', isGeminiRequest ? 'Gemini' : 'Fireworks');
-        }
 
         // Add BYOK authorization header if configured
         if (CF_AIG_AUTHORIZATION) {
@@ -91,43 +46,10 @@ globalThis.fetch = async function patchedFetch(input, init) {
             }
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Gemini Compatibility: Strip unsupported OpenAI parameters
-        // ──────────────────────────────────────────────────────────────────────
-        // ClawdBot's SDK sends OpenAI-specific parameters that Gemini's
-        // OpenAI-compatible endpoint doesn't support. Cloudflare's /compat
-        // endpoint SHOULD strip these but currently doesn't (as of Feb 2026).
-        //
-        // Error without this: "Unknown name 'store': Cannot find field"
-        //
-        // TODO: Remove this once Cloudflare fixes /compat parameter handling
-        // ──────────────────────────────────────────────────────────────────────
-        let patchedBody = init?.body;
-        if (isGeminiRequest && init?.body && typeof init.body === 'string') {
-            try {
-                const body = JSON.parse(init.body);
-                const unsupportedParams = ['store', 'metadata', 'stream_options', 'service_tier'];
-                let stripped = [];
-                for (const param of unsupportedParams) {
-                    if (param in body) {
-                        delete body[param];
-                        stripped.push(param);
-                    }
-                }
-                if (stripped.length > 0) {
-                    patchedBody = JSON.stringify(body);
-                    console.log('[fetch-interceptor] Stripped unsupported params for Gemini:', stripped.join(', '));
-                }
-            } catch (e) {
-                // Not JSON or parsing failed, pass through unchanged
-            }
-        }
-
-        // Create new init with patched headers and body
+        // Create new init with patched headers
         const patchedInit = {
             ...init,
             headers,
-            body: patchedBody,
         };
 
         return originalFetch(input, patchedInit);
@@ -137,7 +59,7 @@ globalThis.fetch = async function patchedFetch(input, init) {
     return originalFetch(input, init);
 };
 
-console.log('[fetch-interceptor] Installed AI Gateway interceptor');
+console.log('[fetch-interceptor] Installed AI Gateway BYOK interceptor');
 if (CF_AIG_AUTHORIZATION) {
     console.log('[fetch-interceptor] BYOK mode enabled (cf-aig-authorization will be injected)');
 } else {

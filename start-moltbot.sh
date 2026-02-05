@@ -41,9 +41,15 @@ should_restore_from_r2() {
     local R2_SYNC_FILE="$BACKUP_DIR/.last-sync"
     local LOCAL_SYNC_FILE="$CONFIG_DIR/.last-sync"
     
-    # If no R2 sync timestamp, don't restore
+    # If no R2 sync timestamp but R2 has data, still restore
+    # This handles the case where persona files exist but sync never completed
     if [ ! -f "$R2_SYNC_FILE" ]; then
-        echo "No R2 sync timestamp found, skipping restore"
+        # Check if R2 has workspace persona files
+        if [ -d "$BACKUP_DIR/workspace" ] && ls "$BACKUP_DIR/workspace"/*.md >/dev/null 2>&1; then
+            echo "No .last-sync but R2 has persona files, will restore"
+            return 0
+        fi
+        echo "No R2 sync timestamp and no persona files, skipping restore"
         return 1
     fi
     
