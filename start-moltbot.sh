@@ -332,9 +332,9 @@ if (isOpenAI) {
     config.models = config.models || {};
     config.models.providers = config.models.providers || {};
     config.models.providers.google = {
-        baseUrl: baseUrl,
+        baseURL: baseUrl,
         // API key from env (set via AI_GATEWAY_API_KEY secret → mapped to GEMINI_API_KEY)
-        // Fetch interceptor removes this when CF_AIG_AUTHORIZATION is set (BYOK mode)
+        // Fetch interceptor handles BYOK for x-goog-api-key header
         apiKey: process.env.GEMINI_API_KEY,
         models: [
             { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', contextWindow: 1000000 },

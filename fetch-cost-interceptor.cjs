@@ -34,10 +34,16 @@ globalThis.fetch = async function patchedFetch(input, init) {
 
         // Add BYOK authorization header if configured
         if (CF_AIG_AUTHORIZATION) {
-            // Remove any existing Authorization header so Gateway can inject Provider Key
+            // Remove any existing auth headers so Gateway can inject Provider Key
+            // - Authorization: used by OpenAI-compatible SDKs
+            // - x-goog-api-key: used by Google's native SDK
             if (headers.has('Authorization')) {
                 headers.delete('Authorization');
-                console.log('[fetch-interceptor] Removed Authorization header (BYOK mode - Gateway will inject Provider Key)');
+                console.log('[fetch-interceptor] Removed Authorization header (BYOK mode)');
+            }
+            if (headers.has('x-goog-api-key')) {
+                headers.delete('x-goog-api-key');
+                console.log('[fetch-interceptor] Removed x-goog-api-key header (BYOK mode)');
             }
             // Add the cf-aig-authorization header for Gateway authentication
             if (!headers.has('cf-aig-authorization')) {
