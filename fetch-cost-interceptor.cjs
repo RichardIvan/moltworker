@@ -9,7 +9,7 @@
  * 3. This interceptor REMOVES the Authorization header
  * 4. This interceptor ADDS cf-aig-authorization header (Gateway auth)
  * 5. Gateway receives request with NO Authorization → injects Provider Key
- * 6. Provider (Fireworks) receives the real API key
+ * 6. Provider (Fireworks, Google AI Studio) receives the real API key
  * 
  * Headers injected:
  * - cf-aig-custom-cost: Cost tracking for AI Gateway dashboard
@@ -36,8 +36,11 @@ const originalFetch = globalThis.fetch;
 globalThis.fetch = async function patchedFetch(input, init) {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 
-    // Only intercept requests to AI Gateway custom providers
-    if (url && url.includes('gateway.ai.cloudflare.com') && url.includes('/custom-')) {
+    // Only intercept requests to AI Gateway (custom providers and google-ai-studio for BYOK)
+    const isAIGatewayRequest = url && url.includes('gateway.ai.cloudflare.com');
+    const needsBYOK = url && (url.includes('/custom-') || url.includes('/google-ai-studio'));
+
+    if (isAIGatewayRequest && needsBYOK) {
         const headers = new Headers(init?.headers);
 
         // Add cost tracking header if not already present
