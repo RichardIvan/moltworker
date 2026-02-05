@@ -1,30 +1,69 @@
 /**
  * Fetch interceptor for AI Gateway BYOK (Bring Your Own Key) mode
- * Build: 2026-02-05T09:56
+ * Build: 2026-02-05T10:14
+ * 
+ * This interceptor does TWO things:
+ * 1. URL Rewriting: Redirects native Google API requests to Cloudflare AI Gateway
+ *    (because OpenClaw doesn't pass baseUrl to the @ai-sdk/google SDK)
+ * 2. BYOK Header Management: Removes API keys and adds cf-aig-authorization
  * 
  * BYOK Flow:
- * 1. Clawdbot validates config using placeholder API key
- * 2. Clawdbot sends request with Authorization: Bearer BYOK-PLACEHOLDER
- * 3. This interceptor REMOVES the Authorization header
+ * 1. SDK sends request to generativelanguage.googleapis.com with x-goog-api-key
+ * 2. This interceptor REWRITES URL to AI Gateway /google-ai-studio endpoint
+ * 3. This interceptor REMOVES the x-goog-api-key header  
  * 4. This interceptor ADDS cf-aig-authorization header (Gateway auth)
- * 5. Gateway receives request with NO Authorization → injects Provider Key
- * 6. Provider (Fireworks, Google AI Studio) receives the real API key
+ * 5. Gateway receives request with NO API key → injects Provider Key from BYOK config
+ * 6. Google AI Studio receives the real API key
  * 
  * Usage: NODE_OPTIONS="--require /path/to/fetch-cost-interceptor.cjs" node app.js
  * 
  * Environment variables:
  * - CF_AIG_AUTHORIZATION: API token for AI Gateway authentication (required for BYOK)
+ * - AI_GATEWAY_BASE_URL: Base URL for AI Gateway (e.g., https://gateway.ai.cloudflare.com/v1/{account}/{gateway}/google-ai-studio)
  */
 
 // BYOK authorization token (set via environment variable)
 const CF_AIG_AUTHORIZATION = process.env.CF_AIG_AUTHORIZATION;
+const AI_GATEWAY_BASE_URL = process.env.AI_GATEWAY_BASE_URL;
 
 const originalFetch = globalThis.fetch;
 
 globalThis.fetch = async function patchedFetch(input, init) {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    let url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 
-    // Only intercept requests to AI Gateway (custom providers and google-ai-studio for BYOK)
+    // === URL REWRITING ===
+    // Intercept requests to native Google API and redirect to AI Gateway
+    // This is needed because OpenClaw doesn't pass baseUrl to the @ai-sdk/google SDK
+    const isNativeGoogleRequest = url && url.includes('generativelanguage.googleapis.com');
+
+    if (isNativeGoogleRequest && AI_GATEWAY_BASE_URL && AI_GATEWAY_BASE_URL.includes('/google-ai-studio')) {
+        // Extract path after googleapis.com (e.g., /v1beta/models/gemini-3-flash:generateContent)
+        const googleUrl = new URL(url);
+        const pathAfterHost = googleUrl.pathname + googleUrl.search;
+
+        // Build new URL: AI Gateway base + path
+        // Note: AI Gateway expects /v1/ not /v1beta/, but it should handle the rewrite
+        const gatewayBaseUrl = AI_GATEWAY_BASE_URL.replace(/\/+$/, ''); // Remove trailing slashes
+        const newUrl = gatewayBaseUrl + pathAfterHost;
+
+        console.log('[fetch-interceptor] Redirecting Google API request:');
+        console.log('[fetch-interceptor]   From:', url);
+        console.log('[fetch-interceptor]   To:', newUrl);
+
+        // Update the URL
+        url = newUrl;
+        if (typeof input === 'string') {
+            input = newUrl;
+        } else if (input instanceof URL) {
+            input = new URL(newUrl);
+        } else {
+            // Request object - need to create a new one with the new URL
+            input = new Request(newUrl, input);
+        }
+    }
+
+    // === BYOK HEADER MANAGEMENT ===
+    // Handle requests to AI Gateway (either direct or redirected)
     const isAIGatewayRequest = url && url.includes('gateway.ai.cloudflare.com');
     const isGoogleAIStudio = url && url.includes('/google-ai-studio');
     const isCustomProvider = url && url.includes('/custom-');
@@ -67,6 +106,9 @@ globalThis.fetch = async function patchedFetch(input, init) {
 };
 
 console.log('[fetch-interceptor] Installed AI Gateway BYOK interceptor');
+if (AI_GATEWAY_BASE_URL && AI_GATEWAY_BASE_URL.includes('/google-ai-studio')) {
+    console.log('[fetch-interceptor] URL rewriting enabled: Google API → AI Gateway');
+}
 if (CF_AIG_AUTHORIZATION) {
     console.log('[fetch-interceptor] BYOK mode enabled (cf-aig-authorization will be injected)');
 } else {
