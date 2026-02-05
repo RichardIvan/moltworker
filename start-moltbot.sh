@@ -334,7 +334,7 @@ if (isOpenAI) {
     // Clear any conflicting openai provider config (from R2 restore of old config)
     delete config.models.providers.openai;
     config.models.providers.google = {
-        baseURL: baseUrl,
+        baseUrl: baseUrl,
         // API key from env (set via AI_GATEWAY_API_KEY secret → mapped to GEMINI_API_KEY)
         // Fetch interceptor handles BYOK for x-goog-api-key header
         apiKey: process.env.GEMINI_API_KEY,
