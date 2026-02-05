@@ -91,10 +91,43 @@ globalThis.fetch = async function patchedFetch(input, init) {
             }
         }
 
-        // Create new init with patched headers
+        // ──────────────────────────────────────────────────────────────────────
+        // Gemini Compatibility: Strip unsupported OpenAI parameters
+        // ──────────────────────────────────────────────────────────────────────
+        // ClawdBot's SDK sends OpenAI-specific parameters that Gemini's
+        // OpenAI-compatible endpoint doesn't support. Cloudflare's /compat
+        // endpoint SHOULD strip these but currently doesn't (as of Feb 2026).
+        //
+        // Error without this: "Unknown name 'store': Cannot find field"
+        //
+        // TODO: Remove this once Cloudflare fixes /compat parameter handling
+        // ──────────────────────────────────────────────────────────────────────
+        let patchedBody = init?.body;
+        if (isGeminiRequest && init?.body && typeof init.body === 'string') {
+            try {
+                const body = JSON.parse(init.body);
+                const unsupportedParams = ['store', 'metadata', 'stream_options', 'service_tier'];
+                let stripped = [];
+                for (const param of unsupportedParams) {
+                    if (param in body) {
+                        delete body[param];
+                        stripped.push(param);
+                    }
+                }
+                if (stripped.length > 0) {
+                    patchedBody = JSON.stringify(body);
+                    console.log('[fetch-interceptor] Stripped unsupported params for Gemini:', stripped.join(', '));
+                }
+            } catch (e) {
+                // Not JSON or parsing failed, pass through unchanged
+            }
+        }
+
+        // Create new init with patched headers and body
         const patchedInit = {
             ...init,
             headers,
+            body: patchedBody,
         };
 
         return originalFetch(input, patchedInit);
