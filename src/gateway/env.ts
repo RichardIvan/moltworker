@@ -11,29 +11,27 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
 
   // Normalize the base URL by removing trailing slashes
   const normalizedBaseUrl = env.AI_GATEWAY_BASE_URL?.replace(/\/+$/, '');
+
+  // Detect OpenAI-compatible gateways
   const isOpenAIGateway = normalizedBaseUrl?.endsWith('/openai') ||
     normalizedBaseUrl?.endsWith('/openrouter') ||
     normalizedBaseUrl?.endsWith('/fireworks') ||
     normalizedBaseUrl?.endsWith('/custom-fireworks') ||
-    normalizedBaseUrl?.endsWith('/google-ai-studio') ||
     normalizedBaseUrl?.includes('fireworks.ai');
+
+  // Detect native Google/Gemini gateway
+  const isGoogleGateway = normalizedBaseUrl?.endsWith('/google-ai-studio');
 
   // AI Gateway vars take precedence
   // Map to the appropriate provider env var based on the gateway endpoint
   if (env.AI_GATEWAY_API_KEY) {
-    if (isOpenAIGateway) {
+    if (isGoogleGateway) {
+      // Native google provider uses GEMINI_API_KEY
+      envVars.GEMINI_API_KEY = env.AI_GATEWAY_API_KEY;
+    } else if (isOpenAIGateway) {
       envVars.OPENAI_API_KEY = env.AI_GATEWAY_API_KEY;
       // Don't pass ANTHROPIC_API_KEY when using OpenAI/OpenRouter gateway
       // to prevent OpenClaw from defaulting to Anthropic
-    } else {
-      envVars.ANTHROPIC_API_KEY = env.AI_GATEWAY_API_KEY;
-    }
-  } else if (normalizedBaseUrl && env.AI_GATEWAY_API_KEY) {
-    // BYOK mode: AI_GATEWAY_API_KEY is required (set via wrangler secret)
-    // The fetch interceptor will REMOVE the Authorization header when CF_AIG_AUTHORIZATION is set
-    // Gateway then injects the real Provider Key
-    if (isOpenAIGateway) {
-      envVars.OPENAI_API_KEY = env.AI_GATEWAY_API_KEY;
     } else {
       envVars.ANTHROPIC_API_KEY = env.AI_GATEWAY_API_KEY;
     }
@@ -53,7 +51,10 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   if (normalizedBaseUrl) {
     envVars.AI_GATEWAY_BASE_URL = normalizedBaseUrl;
     // Also set the provider-specific base URL env var
-    if (isOpenAIGateway) {
+    if (isGoogleGateway) {
+      // For native Google provider, we don't need a separate base URL env var
+      // The baseUrl is passed via config.models.providers.google.baseUrl
+    } else if (isOpenAIGateway) {
       envVars.OPENAI_BASE_URL = normalizedBaseUrl;
     } else {
       envVars.ANTHROPIC_BASE_URL = normalizedBaseUrl;
@@ -61,6 +62,7 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   } else if (env.ANTHROPIC_BASE_URL) {
     envVars.ANTHROPIC_BASE_URL = env.ANTHROPIC_BASE_URL;
   }
+
   // Map MOLTBOT_GATEWAY_TOKEN to CLAWDBOT_GATEWAY_TOKEN (container expects this name)
   if (env.MOLTBOT_GATEWAY_TOKEN) envVars.CLAWDBOT_GATEWAY_TOKEN = env.MOLTBOT_GATEWAY_TOKEN;
   if (env.DEV_MODE) envVars.CLAWDBOT_DEV_MODE = env.DEV_MODE; // Pass DEV_MODE as CLAWDBOT_DEV_MODE to container

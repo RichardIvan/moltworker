@@ -313,39 +313,37 @@ if (isOpenAI) {
     config.agents.defaults.models['openai/gpt-4.5-preview'] = { alias: 'GPT-4.5' };
     config.agents.defaults.model.primary = 'openai/gpt-5.2';
 } else if (isGoogleAIStudio) {
-    // Google AI Studio via Cloudflare AI Gateway Unified API (OpenAI-compatible)
+    // Google AI Studio via native Google provider
     // 
-    // IMPORTANT: The /google-ai-studio route uses Google's native API format.
-    // For OpenAI-compatible requests, use the /compat endpoint instead:
-    //   Base URL: https://gateway.ai.cloudflare.com/v1/{account}/{gateway}/compat
-    //   Model format: google-ai-studio/{model}
+    // Using OpenClaw's built-in 'google' provider with Gemini's native API format.
+    // This avoids OpenAI-compat issues (like unsupported 'store' param).
     //
-    // We auto-convert to /compat by replacing /google-ai-studio with /compat
-    const compatBaseUrl = baseUrl.replace('/google-ai-studio', '/compat');
-    console.log('Configuring Google AI Studio provider with Unified API:', compatBaseUrl);
+    // When using Cloudflare AI Gateway:
+    //   Base URL: https://gateway.ai.cloudflare.com/v1/{account}/{gateway}/google-ai-studio
+    //   Model format: google/{model}
+    //
+    console.log('Configuring native Google provider with base URL:', baseUrl);
     config.models = config.models || {};
     config.models.providers = config.models.providers || {};
-    config.models.providers.openai = {
-        baseUrl: compatBaseUrl,
-        api: 'openai-completions',
-        // API key from env (set via AI_GATEWAY_API_KEY secret → mapped to OPENAI_API_KEY)
+    config.models.providers.google = {
+        baseUrl: baseUrl,
+        // API key from env (set via AI_GATEWAY_API_KEY secret → mapped to GEMINI_API_KEY)
         // Fetch interceptor removes this when CF_AIG_AUTHORIZATION is set (BYOK mode)
-        apiKey: process.env.OPENAI_API_KEY,
-        // Model IDs must include provider prefix for /compat endpoint
+        apiKey: process.env.GEMINI_API_KEY,
         models: [
-            { id: 'google-ai-studio/gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', contextWindow: 1000000 },
-            { id: 'google-ai-studio/gemini-2.5-flash', name: 'Gemini 2.5 Flash', contextWindow: 1000000 },
-            { id: 'google-ai-studio/gemini-2.5-pro', name: 'Gemini 2.5 Pro', contextWindow: 1000000 },
-            { id: 'google-ai-studio/gemini-2.0-flash', name: 'Gemini 2.0 Flash', contextWindow: 1000000 },
+            { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', contextWindow: 1000000 },
+            { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', contextWindow: 1000000 },
+            { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', contextWindow: 1000000 },
+            { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', contextWindow: 1000000 },
         ]
     };
     // Add models to the allowlist so they appear in /models
     config.agents.defaults.models = config.agents.defaults.models || {};
-    config.agents.defaults.models['openai/google-ai-studio/gemini-3-flash-preview'] = { alias: 'Gemini 3 Flash' };
-    config.agents.defaults.models['openai/google-ai-studio/gemini-2.5-flash'] = { alias: 'Gemini 2.5 Flash' };
-    config.agents.defaults.models['openai/google-ai-studio/gemini-2.5-pro'] = { alias: 'Gemini 2.5 Pro' };
-    config.agents.defaults.models['openai/google-ai-studio/gemini-2.0-flash'] = { alias: 'Gemini 2.0 Flash' };
-    config.agents.defaults.model.primary = 'openai/google-ai-studio/gemini-3-flash-preview';
+    config.agents.defaults.models['google/gemini-3-flash-preview'] = { alias: 'Gemini 3 Flash' };
+    config.agents.defaults.models['google/gemini-2.5-flash'] = { alias: 'Gemini 2.5 Flash' };
+    config.agents.defaults.models['google/gemini-2.5-pro'] = { alias: 'Gemini 2.5 Pro' };
+    config.agents.defaults.models['google/gemini-2.0-flash'] = { alias: 'Gemini 2.0 Flash' };
+    config.agents.defaults.model.primary = 'google/gemini-3-flash-preview';
 } else if (isFireworks) {
     // Fireworks.ai endpoint (OpenAI-compatible format)
     // Direct: https://api.fireworks.ai/inference/v1
