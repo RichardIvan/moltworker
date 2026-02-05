@@ -91,34 +91,10 @@ globalThis.fetch = async function patchedFetch(input, init) {
             }
         }
 
-        // For Gemini requests, strip OpenAI-specific parameters that aren't supported
-        let patchedBody = init?.body;
-        if (isGeminiRequest && init?.body && typeof init.body === 'string') {
-            try {
-                const body = JSON.parse(init.body);
-                // List of OpenAI-specific parameters not supported by Gemini
-                const unsupportedParams = ['store', 'metadata', 'stream_options', 'service_tier'];
-                let modified = false;
-                for (const param of unsupportedParams) {
-                    if (param in body) {
-                        delete body[param];
-                        modified = true;
-                    }
-                }
-                if (modified) {
-                    patchedBody = JSON.stringify(body);
-                    console.log('[fetch-interceptor] Stripped unsupported OpenAI params for Gemini');
-                }
-            } catch (e) {
-                // Not JSON or parsing failed, pass through unchanged
-            }
-        }
-
-        // Create new init with patched headers and body
+        // Create new init with patched headers
         const patchedInit = {
             ...init,
             headers,
-            body: patchedBody,
         };
 
         return originalFetch(input, patchedInit);
