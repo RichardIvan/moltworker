@@ -1,5 +1,6 @@
 /**
  * Fetch interceptor for AI Gateway BYOK (Bring Your Own Key) mode
+ * Build: 2026-02-05T09:56
  * 
  * BYOK Flow:
  * 1. Clawdbot validates config using placeholder API key

@@ -331,6 +331,8 @@ if (isOpenAI) {
     console.log('Configuring native Google provider with base URL:', baseUrl);
     config.models = config.models || {};
     config.models.providers = config.models.providers || {};
+    // Clear any conflicting openai provider config (from R2 restore of old config)
+    delete config.models.providers.openai;
     config.models.providers.google = {
         baseURL: baseUrl,
         // API key from env (set via AI_GATEWAY_API_KEY secret → mapped to GEMINI_API_KEY)
@@ -343,8 +345,20 @@ if (isOpenAI) {
             { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', contextWindow: 1000000 },
         ]
     };
-    // Add models to the allowlist so they appear in /models
+    // Clear stale openai/ model aliases and add google/ models to the allowlist
     config.agents.defaults.models = config.agents.defaults.models || {};
+    // TODO: Remove these delete lines once R2 config is clean (after a few successful syncs)
+    // These are needed temporarily to clean up stale openai/ aliases from old R2 config backups
+    // Remove old openai/ Gemini aliases (from R2 config restore)
+    delete config.agents.defaults.models['openai/gemini-3-flash-preview'];
+    delete config.agents.defaults.models['openai/gemini-2.5-flash'];
+    delete config.agents.defaults.models['openai/gemini-2.5-pro'];
+    delete config.agents.defaults.models['openai/gemini-2.0-flash'];
+    delete config.agents.defaults.models['openai/google-ai-studio/gemini-3-flash-preview'];
+    delete config.agents.defaults.models['openai/google-ai-studio/gemini-2.5-flash'];
+    delete config.agents.defaults.models['openai/google-ai-studio/gemini-2.5-pro'];
+    delete config.agents.defaults.models['openai/google-ai-studio/gemini-2.0-flash'];
+    // Add google/ models
     config.agents.defaults.models['google/gemini-3-flash-preview'] = { alias: 'Gemini 3 Flash' };
     config.agents.defaults.models['google/gemini-2.5-flash'] = { alias: 'Gemini 2.5 Flash' };
     config.agents.defaults.models['google/gemini-2.5-pro'] = { alias: 'Gemini 2.5 Pro' };
