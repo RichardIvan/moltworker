@@ -21,11 +21,29 @@
  * - CF_AIG_AUTHORIZATION: API token for AI Gateway authentication (required for BYOK)
  */
 
+// Provider pricing for cost tracking in AI Gateway dashboard
+// Set to 0 for free tier - Gateway will still track token usage
+//
 // Fireworks DeepSeek V3.2 serverless pricing
 // https://fireworks.ai/models/fireworks/deepseek-v3p2
 const FIREWORKS_COST = {
     per_token_in: 0.00000056,   // $0.56 / 1M tokens
     per_token_out: 0.00000168,  // $1.68 / 1M tokens
+};
+
+// Google AI Studio Gemini 3 Flash Preview pricing
+// https://ai.google.dev/pricing
+// Note: Set to 0 if using free tier (tokens still tracked)
+const GEMINI_COST = {
+    per_token_in: 0.0000005,    // $0.50 / 1M tokens
+    per_token_out: 0.000003,    // $3.00 / 1M tokens
+};
+
+// Free tier - set this if you're on free quota
+// Tokens will still be tracked, just no cost
+const FREE_TIER_COST = {
+    per_token_in: 0,
+    per_token_out: 0,
 };
 
 // BYOK authorization token (set via environment variable)
@@ -38,15 +56,21 @@ globalThis.fetch = async function patchedFetch(input, init) {
 
     // Only intercept requests to AI Gateway (custom providers and google-ai-studio for BYOK)
     const isAIGatewayRequest = url && url.includes('gateway.ai.cloudflare.com');
-    const needsBYOK = url && (url.includes('/custom-') || url.includes('/google-ai-studio'));
+    const isGoogleAIStudio = url && url.includes('/google-ai-studio');
+    const isCustomProvider = url && url.includes('/custom-');
+    const needsBYOK = isGoogleAIStudio || isCustomProvider;
 
     if (isAIGatewayRequest && needsBYOK) {
         const headers = new Headers(init?.headers);
 
+        // Select cost based on provider
+        // Change to FREE_TIER_COST if using free quota
+        const cost = isGoogleAIStudio ? GEMINI_COST : FIREWORKS_COST;
+
         // Add cost tracking header if not already present
         if (!headers.has('cf-aig-custom-cost')) {
-            headers.set('cf-aig-custom-cost', JSON.stringify(FIREWORKS_COST));
-            console.log('[fetch-interceptor] Added cf-aig-custom-cost header');
+            headers.set('cf-aig-custom-cost', JSON.stringify(cost));
+            console.log('[fetch-interceptor] Added cf-aig-custom-cost header:', isGoogleAIStudio ? 'Gemini' : 'Fireworks');
         }
 
         // Add BYOK authorization header if configured
