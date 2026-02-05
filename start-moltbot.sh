@@ -284,10 +284,12 @@ if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
 //   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openai
 //   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openrouter
 //   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/fireworks (custom provider)
+//   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/google-ai-studio
 const baseUrl = (process.env.AI_GATEWAY_BASE_URL || process.env.ANTHROPIC_BASE_URL || '').replace(/\/+$/, '');
 const isOpenAI = baseUrl.endsWith('/openai');
 const isOpenRouter = baseUrl.endsWith('/openrouter');
 const isFireworks = baseUrl.includes('fireworks.ai') || baseUrl.endsWith('/fireworks') || baseUrl.endsWith('/custom-fireworks');
+const isGoogleAIStudio = baseUrl.endsWith('/google-ai-studio');
 
 if (isOpenAI) {
     // Create custom openai provider config with baseUrl override
@@ -310,6 +312,31 @@ if (isOpenAI) {
     config.agents.defaults.models['openai/gpt-5'] = { alias: 'GPT-5' };
     config.agents.defaults.models['openai/gpt-4.5-preview'] = { alias: 'GPT-4.5' };
     config.agents.defaults.model.primary = 'openai/gpt-5.2';
+} else if (isGoogleAIStudio) {
+    // Google AI Studio endpoint (OpenAI-compatible format via Cloudflare AI Gateway)
+    // Gateway URL: https://gateway.ai.cloudflare.com/v1/{account}/{gateway}/google-ai-studio
+    // The gateway adds /openai/v1 suffix for OpenAI-compatible endpoints
+    console.log('Configuring Google AI Studio provider with base URL:', baseUrl);
+    config.models = config.models || {};
+    config.models.providers = config.models.providers || {};
+    config.models.providers.openai = {
+        baseUrl: baseUrl,
+        api: 'openai-completions',
+        // API key from env (set via AI_GATEWAY_API_KEY secret → mapped to OPENAI_API_KEY)
+        // Fetch interceptor removes this when CF_AIG_AUTHORIZATION is set (BYOK mode)
+        apiKey: process.env.OPENAI_API_KEY,
+        models: [
+            { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', contextWindow: 1000000 },
+            { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', contextWindow: 1000000 },
+            { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', contextWindow: 1000000 },
+        ]
+    };
+    // Add models to the allowlist so they appear in /models
+    config.agents.defaults.models = config.agents.defaults.models || {};
+    config.agents.defaults.models['openai/gemini-3-flash-preview'] = { alias: 'Gemini 3 Flash' };
+    config.agents.defaults.models['openai/gemini-2.5-flash'] = { alias: 'Gemini 2.5 Flash' };
+    config.agents.defaults.models['openai/gemini-2.5-pro'] = { alias: 'Gemini 2.5 Pro' };
+    config.agents.defaults.model.primary = 'openai/gemini-3-flash-preview';
 } else if (isFireworks) {
     // Fireworks.ai endpoint (OpenAI-compatible format)
     // Direct: https://api.fireworks.ai/inference/v1

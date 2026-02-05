@@ -15,6 +15,7 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
     normalizedBaseUrl?.endsWith('/openrouter') ||
     normalizedBaseUrl?.endsWith('/fireworks') ||
     normalizedBaseUrl?.endsWith('/custom-fireworks') ||
+    normalizedBaseUrl?.endsWith('/google-ai-studio') ||
     normalizedBaseUrl?.includes('fireworks.ai');
 
   // AI Gateway vars take precedence
