@@ -336,6 +336,7 @@ if (isOpenAI) {
             { id: 'google-ai-studio/gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', contextWindow: 1000000 },
             { id: 'google-ai-studio/gemini-2.5-flash', name: 'Gemini 2.5 Flash', contextWindow: 1000000 },
             { id: 'google-ai-studio/gemini-2.5-pro', name: 'Gemini 2.5 Pro', contextWindow: 1000000 },
+            { id: 'google-ai-studio/gemini-2.0-flash', name: 'Gemini 2.0 Flash', contextWindow: 1000000 },
         ]
     };
     // Add models to the allowlist so they appear in /models
@@ -343,6 +344,7 @@ if (isOpenAI) {
     config.agents.defaults.models['openai/google-ai-studio/gemini-3-flash-preview'] = { alias: 'Gemini 3 Flash' };
     config.agents.defaults.models['openai/google-ai-studio/gemini-2.5-flash'] = { alias: 'Gemini 2.5 Flash' };
     config.agents.defaults.models['openai/google-ai-studio/gemini-2.5-pro'] = { alias: 'Gemini 2.5 Pro' };
+    config.agents.defaults.models['openai/google-ai-studio/gemini-2.0-flash'] = { alias: 'Gemini 2.0 Flash' };
     config.agents.defaults.model.primary = 'openai/google-ai-studio/gemini-3-flash-preview';
 } else if (isFireworks) {
     // Fireworks.ai endpoint (OpenAI-compatible format)
