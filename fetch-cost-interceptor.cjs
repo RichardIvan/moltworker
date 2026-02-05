@@ -54,23 +54,27 @@ const originalFetch = globalThis.fetch;
 globalThis.fetch = async function patchedFetch(input, init) {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 
-    // Only intercept requests to AI Gateway (custom providers and google-ai-studio for BYOK)
+    // Only intercept requests to AI Gateway (custom providers and compat/google-ai-studio for BYOK)
     const isAIGatewayRequest = url && url.includes('gateway.ai.cloudflare.com');
+    // /compat is the Unified API endpoint for OpenAI-compatible requests to any provider
+    const isCompatEndpoint = url && url.includes('/compat');
     const isGoogleAIStudio = url && url.includes('/google-ai-studio');
     const isCustomProvider = url && url.includes('/custom-');
-    const needsBYOK = isGoogleAIStudio || isCustomProvider;
+    const needsBYOK = isGoogleAIStudio || isCustomProvider || isCompatEndpoint;
 
     if (isAIGatewayRequest && needsBYOK) {
         const headers = new Headers(init?.headers);
 
         // Select cost based on provider
         // Change to FREE_TIER_COST if using free quota
-        const cost = isGoogleAIStudio ? GEMINI_COST : FIREWORKS_COST;
+        // Note: /compat endpoint is currently only used for Google AI Studio
+        const isGeminiRequest = isGoogleAIStudio || isCompatEndpoint;
+        const cost = isGeminiRequest ? GEMINI_COST : FIREWORKS_COST;
 
         // Add cost tracking header if not already present
         if (!headers.has('cf-aig-custom-cost')) {
             headers.set('cf-aig-custom-cost', JSON.stringify(cost));
-            console.log('[fetch-interceptor] Added cf-aig-custom-cost header:', isGoogleAIStudio ? 'Gemini' : 'Fireworks');
+            console.log('[fetch-interceptor] Added cf-aig-custom-cost header:', isGeminiRequest ? 'Gemini' : 'Fireworks');
         }
 
         // Add BYOK authorization header if configured
