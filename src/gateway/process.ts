@@ -3,6 +3,10 @@ import type { MoltbotEnv } from '../types';
 import { MOLTBOT_PORT, STARTUP_TIMEOUT_MS } from '../config';
 import { buildEnvVars } from './env';
 import { mountR2Storage } from './r2';
+import { restoreFromR2 } from './restore';
+
+// Track whether we've already restored from R2 this container lifecycle
+let hasRestoredFromR2 = false;
 
 /**
  * Find an existing Moltbot gateway process
@@ -16,13 +20,13 @@ export async function findExistingMoltbotProcess(sandbox: Sandbox): Promise<Proc
     for (const proc of processes) {
       // Only match the gateway process, not CLI commands like "clawdbot devices list"
       // Note: CLI is still named "clawdbot" until upstream renames it
-      const isGatewayProcess = 
+      const isGatewayProcess =
         proc.command.includes('start-moltbot.sh') ||
         proc.command.includes('clawdbot gateway');
-      const isCliCommand = 
+      const isCliCommand =
         proc.command.includes('clawdbot devices') ||
         proc.command.includes('clawdbot --version');
-      
+
       if (isGatewayProcess && !isCliCommand) {
         if (proc.status === 'starting' || proc.status === 'running') {
           return proc;
@@ -40,8 +44,9 @@ export async function findExistingMoltbotProcess(sandbox: Sandbox): Promise<Proc
  * 
  * This will:
  * 1. Mount R2 storage if configured
- * 2. Check for an existing gateway process
- * 3. Wait for it to be ready, or start a new one
+ * 2. Restore persisted files from R2 (identity, cron jobs, skills, etc.)
+ * 3. Check for an existing gateway process
+ * 4. Wait for it to be ready, or start a new one
  * 
  * @param sandbox - The sandbox instance
  * @param env - Worker environment bindings
@@ -49,7 +54,6 @@ export async function findExistingMoltbotProcess(sandbox: Sandbox): Promise<Proc
  */
 export async function ensureMoltbotGateway(sandbox: Sandbox, env: MoltbotEnv): Promise<Process> {
   // Mount R2 storage for persistent data (non-blocking if not configured)
-  // R2 is used as a backup - the startup script will restore from it on boot
   await mountR2Storage(sandbox, env);
 
   // Check if Moltbot is already running or starting
@@ -74,6 +78,22 @@ export async function ensureMoltbotGateway(sandbox: Sandbox, env: MoltbotEnv): P
         console.log('Failed to kill process:', killError);
       }
     }
+  }
+
+  // Restore persisted files from R2 (only once per container lifecycle)
+  // This restores: identity files, cron jobs, skills, memory, etc.
+  // CRITICAL: We only do this if we didn't find a running process, to avoid
+  // overwriting live data if the Worker restarts but the Container is still running.
+  if (!hasRestoredFromR2) {
+    console.log('[Gateway] Restoring files from R2...');
+    const restoreResult = await restoreFromR2(sandbox, env);
+    if (restoreResult.success) {
+      console.log('[Gateway] Restored from R2 backup dated:', restoreResult.lastSync);
+    } else if (restoreResult.error !== 'R2 storage is not configured') {
+      // Only warn if R2 is configured but restore failed
+      console.warn('[Gateway] R2 restore failed:', restoreResult.error, restoreResult.details || '');
+    }
+    hasRestoredFromR2 = true;
   }
 
   // Start a new Moltbot gateway
@@ -119,6 +139,6 @@ export async function ensureMoltbotGateway(sandbox: Sandbox, env: MoltbotEnv): P
 
   // Verify gateway is actually responding
   console.log('[Gateway] Verifying gateway health...');
-  
+
   return process;
 }
