@@ -84,12 +84,19 @@ globalThis.fetch = async function patchedFetch(input, init) {
     const isGatewayEmbeddingRequest = isAIGatewayRequest && isGoogleAIStudio && isEmbeddingRequest;
 
     if (isGatewayEmbeddingRequest) {
-        // Extract path after /google-ai-studio (e.g., /v1beta/models/gemini-embedding-001:batchEmbedContents)
+        // Extract path after /google-ai-studio (e.g., /models/gemini-embedding-001:batchEmbedContents)
+        // Note: SDK sends WITHOUT /v1beta prefix, but Google's direct API requires it
         const gatewayUrl = new URL(url);
         const fullPath = gatewayUrl.pathname;
         const googleAiStudioIndex = fullPath.indexOf('/google-ai-studio');
         if (googleAiStudioIndex !== -1) {
-            const pathAfterGateway = fullPath.slice(googleAiStudioIndex + '/google-ai-studio'.length);
+            let pathAfterGateway = fullPath.slice(googleAiStudioIndex + '/google-ai-studio'.length);
+
+            // Add /v1beta prefix if missing - SDK doesn't include it but Google API requires it
+            if (!pathAfterGateway.startsWith('/v1beta') && !pathAfterGateway.startsWith('/v1/')) {
+                pathAfterGateway = '/v1beta' + pathAfterGateway;
+            }
+
             const directGoogleUrl = 'https://generativelanguage.googleapis.com' + pathAfterGateway + gatewayUrl.search;
 
             console.log('[fetch-interceptor] Embedding request - redirecting from gateway to direct Google API:');
