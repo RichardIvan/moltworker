@@ -27,7 +27,9 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   if (env.AI_GATEWAY_API_KEY) {
     if (isGoogleGateway) {
       // Native google provider uses GEMINI_API_KEY
-      envVars.GEMINI_API_KEY = env.AI_GATEWAY_API_KEY;
+      // Prefer a dedicated GEMINI_API_KEY secret if set (for direct API access like embeddings)
+      // Otherwise fall back to AI_GATEWAY_API_KEY (BYOK placeholder)
+      envVars.GEMINI_API_KEY = env.GEMINI_API_KEY || env.AI_GATEWAY_API_KEY;
     } else if (isOpenAIGateway) {
       envVars.OPENAI_API_KEY = env.AI_GATEWAY_API_KEY;
       // Don't pass ANTHROPIC_API_KEY when using OpenAI/OpenRouter gateway
