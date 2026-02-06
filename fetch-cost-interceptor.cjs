@@ -36,17 +36,7 @@ globalThis.fetch = async function patchedFetch(input, init) {
     // This is needed because OpenClaw doesn't pass baseUrl to the @ai-sdk/google SDK
     const isNativeGoogleRequest = url && url.includes('generativelanguage.googleapis.com');
 
-    // Skip AI Gateway redirect for embedding requests - they don't work through the gateway
-    // The /google-ai-studio endpoint returns 404 for embedContent/batchEmbedContents
-    // Let these go directly to Google API (they're low-cost anyway)
-    const isEmbeddingRequest = url && (url.includes(':embedContent') || url.includes(':batchEmbedContents'));
-
-    // Log when embedding requests bypass the gateway
-    if (isNativeGoogleRequest && isEmbeddingRequest) {
-        console.log('[fetch-interceptor] Embedding request - bypassing AI Gateway, going direct to Google');
-    }
-
-    if (isNativeGoogleRequest && !isEmbeddingRequest && AI_GATEWAY_BASE_URL && AI_GATEWAY_BASE_URL.includes('/google-ai-studio')) {
+    if (isNativeGoogleRequest && AI_GATEWAY_BASE_URL && AI_GATEWAY_BASE_URL.includes('/google-ai-studio')) {
         // Extract path after googleapis.com (e.g., /v1beta/models/gemini-3-flash:generateContent)
         const googleUrl = new URL(url);
         const pathAfterHost = googleUrl.pathname + googleUrl.search;
