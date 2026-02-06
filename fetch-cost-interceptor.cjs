@@ -77,6 +77,40 @@ globalThis.fetch = async function patchedFetch(input, init) {
     const isAIGatewayRequest = url && url.includes('gateway.ai.cloudflare.com');
     const isGoogleAIStudio = url && url.includes('/google-ai-studio');
     const isCustomProvider = url && url.includes('/custom-');
+
+    // Embedding requests need to go directly to Google API (gateway returns 404)
+    // The SDK is configured with gateway URL as baseUrl, so embeddings go there
+    // We need to redirect them to the real Google API with the real key
+    const isGatewayEmbeddingRequest = isAIGatewayRequest && isGoogleAIStudio && isEmbeddingRequest;
+
+    if (isGatewayEmbeddingRequest) {
+        // Extract path after /google-ai-studio (e.g., /v1beta/models/gemini-embedding-001:batchEmbedContents)
+        const gatewayUrl = new URL(url);
+        const fullPath = gatewayUrl.pathname;
+        const googleAiStudioIndex = fullPath.indexOf('/google-ai-studio');
+        if (googleAiStudioIndex !== -1) {
+            const pathAfterGateway = fullPath.slice(googleAiStudioIndex + '/google-ai-studio'.length);
+            const directGoogleUrl = 'https://generativelanguage.googleapis.com' + pathAfterGateway + gatewayUrl.search;
+
+            console.log('[fetch-interceptor] Embedding request - redirecting from gateway to direct Google API:');
+            console.log('[fetch-interceptor]   From:', url);
+            console.log('[fetch-interceptor]   To:', directGoogleUrl);
+
+            // Create new request with the direct Google URL
+            // Keep the x-goog-api-key header (it has the real GEMINI_API_KEY)
+            if (typeof input === 'string') {
+                input = directGoogleUrl;
+            } else if (input instanceof URL) {
+                input = new URL(directGoogleUrl);
+            } else {
+                input = new Request(directGoogleUrl, input);
+            }
+
+            // Return directly without BYOK header manipulation
+            return originalFetch(input, init);
+        }
+    }
+
     const needsBYOK = isGoogleAIStudio || isCustomProvider;
 
     if (isAIGatewayRequest && needsBYOK) {
