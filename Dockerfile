@@ -5,6 +5,7 @@ FROM docker.io/cloudflare/sandbox:0.7.0
 # Using direct binary download for reliability
 ENV NODE_VERSION=22.13.1
 ENV GLAB_VERSION=1.46.1
+ENV LINEAR_VERSION=1.9.1
 RUN ARCH="$(dpkg --print-architecture)" \
     && case "${ARCH}" in \
          amd64) NODE_ARCH="x64" ;; \
@@ -25,7 +26,13 @@ RUN ARCH="$(dpkg --print-architecture)" \
     && glab --version \
     && curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared \
     && chmod +x /usr/local/bin/cloudflared \
-    && cloudflared --version
+    && cloudflared --version \
+    && curl -fsSL "https://github.com/schpet/linear-cli/releases/download/v${LINEAR_VERSION}/linear-x86_64-unknown-linux-gnu.tar.xz" -o /tmp/linear.tar.xz \
+    && tar -xJf /tmp/linear.tar.xz -C /tmp \
+    && find /tmp -name "linear" -type f -executable -exec mv {} /usr/local/bin/linear \; \
+    && chmod +x /usr/local/bin/linear \
+    && rm -rf /tmp/linear.tar.xz /tmp/linear-* \
+    && linear --version
 
 # Install pnpm globally
 RUN npm install -g pnpm
