@@ -90,5 +90,8 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   // Web search capability
   if (env.BRAVE_API_KEY) envVars.BRAVE_API_KEY = env.BRAVE_API_KEY;
 
+  // Analytics
+  if (env.POSTHOG_API_KEY) envVars.POSTHOG_API_KEY = env.POSTHOG_API_KEY;
+
   return envVars;
 }
