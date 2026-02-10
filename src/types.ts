@@ -47,6 +47,7 @@ export interface MoltbotEnv {
   GITLAB_REPO_URL?: string; // Repository URL to clone (HTTPS format)
   BRAVE_API_KEY?: string; // Brave Search API key for web search
   POSTHOG_API_KEY?: string; // PostHog analytics API key
+  LINEAR_API_KEY?: string; // Linear project management API key
   // AI Gateway BYOK mode (Provider Keys)
   CF_AIG_AUTHORIZATION?: string; // Key ID from AI Gateway Provider Keys (enables BYOK mode)
 }

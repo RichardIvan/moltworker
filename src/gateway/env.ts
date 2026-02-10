@@ -93,5 +93,8 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   // Analytics
   if (env.POSTHOG_API_KEY) envVars.POSTHOG_API_KEY = env.POSTHOG_API_KEY;
 
+  // Project management
+  if (env.LINEAR_API_KEY) envVars.LINEAR_API_KEY = env.LINEAR_API_KEY;
+
   return envVars;
 }
