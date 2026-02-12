@@ -260,9 +260,56 @@ if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
     };
 }
 
+// Google AI Studio native provider (via Cloudflare AI Gateway BYOK)
+// This configures the Google provider when AI_GATEWAY_BASE_URL points to /google-ai-studio
+const aiGatewayBaseUrl = (process.env.AI_GATEWAY_BASE_URL || '').replace(/\/+$/, '');
+const isGoogleAIStudio = aiGatewayBaseUrl.endsWith('/google-ai-studio');
+
+if (isGoogleAIStudio) {
+    console.log('Configuring native Google provider with base URL:', aiGatewayBaseUrl);
+    config.models = config.models || {};
+    config.models.providers = config.models.providers || {};
+    // Clear any conflicting openai provider config
+    delete config.models.providers.openai;
+    config.models.providers.google = {
+        baseUrl: aiGatewayBaseUrl,
+        apiKey: process.env.GEMINI_API_KEY,
+        models: [
+            { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', contextWindow: 1000000 },
+            { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', contextWindow: 1000000 },
+            { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', contextWindow: 1000000 },
+            { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', contextWindow: 1000000 },
+            { id: 'gemini-embedding-001', name: 'Gemini Embedding', contextWindow: 2048 },
+        ]
+    };
+    config.agents = config.agents || {};
+    config.agents.defaults = config.agents.defaults || {};
+    config.agents.defaults.models = config.agents.defaults.models || {};
+    config.agents.defaults.models['google/gemini-3-flash-preview'] = { alias: 'Gemini 3 Flash' };
+    config.agents.defaults.models['google/gemini-2.5-flash'] = { alias: 'Gemini 2.5 Flash' };
+    config.agents.defaults.models['google/gemini-2.5-pro'] = { alias: 'Gemini 2.5 Pro' };
+    config.agents.defaults.models['google/gemini-2.0-flash'] = { alias: 'Gemini 2.0 Flash' };
+    config.agents.defaults.model = config.agents.defaults.model || {};
+    config.agents.defaults.model.primary = 'google/gemini-3-flash-preview';
+}
+
 fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 console.log('Configuration patched successfully');
 EOFPATCH
+
+# ============================================================
+# GITLAB/GIT SETUP
+# ============================================================
+if [ -n "$GITLAB_TOKEN" ]; then
+    echo "Configuring Git for GitLab..."
+    git config --global user.name "${GIT_USER_NAME:-OpenClaw Agent}"
+    git config --global user.email "${GIT_USER_EMAIL:-agent@openclaw.local}"
+    git config --global credential.helper store
+    echo "https://oauth2:${GITLAB_TOKEN}@gitlab.com" > ~/.git-credentials
+    chmod 600 ~/.git-credentials
+    echo "$GITLAB_TOKEN" | glab auth login --stdin --hostname gitlab.com 2>/dev/null || true
+    echo "GitLab setup complete!"
+fi
 
 # ============================================================
 # BACKGROUND SYNC LOOP
@@ -290,14 +337,14 @@ if r2_configured; then
 
             if [ "$COUNT" -gt 0 ]; then
                 echo "[sync] Uploading changes ($COUNT files) at $(date)" >> "$LOGFILE"
-                rclone sync "$CONFIG_DIR/" "r2:${R2_BUCKET}/openclaw/" \
+                rclone copy "$CONFIG_DIR/" "r2:${R2_BUCKET}/openclaw/" \
                     $RCLONE_FLAGS --exclude='*.lock' --exclude='*.log' --exclude='*.tmp' --exclude='.git/**' 2>> "$LOGFILE"
                 if [ -d "$WORKSPACE_DIR" ]; then
-                    rclone sync "$WORKSPACE_DIR/" "r2:${R2_BUCKET}/workspace/" \
+                    rclone copy "$WORKSPACE_DIR/" "r2:${R2_BUCKET}/workspace/" \
                         $RCLONE_FLAGS --exclude='skills/**' --exclude='.git/**' --exclude='node_modules/**' 2>> "$LOGFILE"
                 fi
                 if [ -d "$SKILLS_DIR" ]; then
-                    rclone sync "$SKILLS_DIR/" "r2:${R2_BUCKET}/skills/" \
+                    rclone copy "$SKILLS_DIR/" "r2:${R2_BUCKET}/skills/" \
                         $RCLONE_FLAGS 2>> "$LOGFILE"
                 fi
                 date -Iseconds > "$LAST_SYNC_FILE"
@@ -319,6 +366,9 @@ rm -f /tmp/openclaw-gateway.lock 2>/dev/null || true
 rm -f "$CONFIG_DIR/gateway.lock" 2>/dev/null || true
 
 echo "Dev mode: ${OPENCLAW_DEV_MODE:-false}"
+
+# Enable fetch interceptor for AI Gateway BYOK mode
+export NODE_OPTIONS="--require /usr/local/lib/fetch-cost-interceptor.cjs"
 
 if [ -n "$OPENCLAW_GATEWAY_TOKEN" ]; then
     echo "Starting gateway with token auth..."

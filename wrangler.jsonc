@@ -3,7 +3,9 @@
   "name": "moltbot-sandbox",
   "main": "src/index.ts",
   "compatibility_date": "2025-05-06",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "observability": {
     "enabled": true,
   },
@@ -19,12 +21,16 @@
   "rules": [
     {
       "type": "Text",
-      "globs": ["**/*.html"],
+      "globs": [
+        "**/*.html"
+      ],
       "fallthrough": false,
     },
     {
       "type": "Data",
-      "globs": ["**/*.png"],
+      "globs": [
+        "**/*.png"
+      ],
       "fallthrough": false,
     },
   ],
@@ -37,7 +43,7 @@
     {
       "class_name": "Sandbox",
       "image": "./Dockerfile",
-      "instance_type": "standard-1",
+      "instance_type": "standard-4",
       "max_instances": 1,
     },
   ],
@@ -51,8 +57,10 @@
   },
   "migrations": [
     {
-      "new_sqlite_classes": ["Sandbox"],
-      "tag": "v1",
+      "new_sqlite_classes": [
+        "Sandbox"
+      ],
+      "tag": "v3",
     },
   ],
   // R2 bucket for persistent storage (moltbot data, conversations, etc.)
@@ -62,7 +70,6 @@
       "bucket_name": "moltbot-data",
     },
   ],
-
   // Browser Rendering binding for CDP shim
   "browser": {
     "binding": "BROWSER",

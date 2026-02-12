@@ -50,6 +50,24 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   if (env.CDP_SECRET) envVars.CDP_SECRET = env.CDP_SECRET;
   if (env.WORKER_URL) envVars.WORKER_URL = env.WORKER_URL;
 
+  // Google AI Studio / BYOK
+  if (env.GEMINI_API_KEY) envVars.GEMINI_API_KEY = env.GEMINI_API_KEY;
+  if (env.CF_AIG_AUTHORIZATION) envVars.CF_AIG_AUTHORIZATION = env.CF_AIG_AUTHORIZATION;
+
+  // GitLab / Git
+  if (env.GITLAB_TOKEN) envVars.GITLAB_TOKEN = env.GITLAB_TOKEN;
+  if (env.GIT_USER_NAME) envVars.GIT_USER_NAME = env.GIT_USER_NAME;
+  if (env.GIT_USER_EMAIL) envVars.GIT_USER_EMAIL = env.GIT_USER_EMAIL;
+  if (env.GITLAB_REPO_URL) envVars.GITLAB_REPO_URL = env.GITLAB_REPO_URL;
+
+  // External services
+  if (env.BRAVE_API_KEY) envVars.BRAVE_API_KEY = env.BRAVE_API_KEY;
+  if (env.POSTHOG_API_KEY) envVars.POSTHOG_API_KEY = env.POSTHOG_API_KEY;
+  if (env.LINEAR_API_KEY) envVars.LINEAR_API_KEY = env.LINEAR_API_KEY;
+
+  // Telegram extras
+  if (env.TELEGRAM_DM_ALLOW_FROM) envVars.TELEGRAM_DM_ALLOW_FROM = env.TELEGRAM_DM_ALLOW_FROM;
+
   // R2 persistence credentials (used by rclone in start-openclaw.sh)
   if (env.R2_ACCESS_KEY_ID) envVars.R2_ACCESS_KEY_ID = env.R2_ACCESS_KEY_ID;
   if (env.R2_SECRET_ACCESS_KEY) envVars.R2_SECRET_ACCESS_KEY = env.R2_SECRET_ACCESS_KEY;

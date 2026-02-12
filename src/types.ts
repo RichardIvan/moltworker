@@ -38,6 +38,20 @@ export interface MoltbotEnv {
   R2_SECRET_ACCESS_KEY?: string;
   R2_BUCKET_NAME?: string; // Override bucket name (default: 'moltbot-data')
   CF_ACCOUNT_ID?: string; // Cloudflare account ID for R2 endpoint
+  // Google AI Studio / BYOK
+  GEMINI_API_KEY?: string; // Direct Google API key for embeddings
+  CF_AIG_AUTHORIZATION?: string; // AI Gateway BYOK authorization header
+  // GitLab / Git integration
+  GITLAB_TOKEN?: string;
+  GIT_USER_NAME?: string;
+  GIT_USER_EMAIL?: string;
+  GITLAB_REPO_URL?: string;
+  // External services
+  BRAVE_API_KEY?: string;
+  POSTHOG_API_KEY?: string;
+  LINEAR_API_KEY?: string;
+  // Telegram extras
+  TELEGRAM_DM_ALLOW_FROM?: string;
   // Browser Rendering binding for CDP shim
   BROWSER?: Fetcher;
   CDP_SECRET?: string; // Shared secret for CDP endpoint authentication
