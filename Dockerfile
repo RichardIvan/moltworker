@@ -38,9 +38,10 @@ RUN ARCH="$(dpkg --print-architecture)" \
 RUN npm install -g pnpm
 
 # Install Playwright CLI with Chromium for browser automation
-RUN npm install -g @playwright/cli@latest \
-    && npx playwright install --with-deps chromium \
-    && playwright-cli --version
+# DISABLED: Chromium adds ~500MB and may cause OOM on standard-4 instances
+# RUN npm install -g @playwright/cli@latest \
+#     && npx playwright install --with-deps chromium \
+#     && playwright-cli --version
 
 # Install moltbot (CLI is still named clawdbot until upstream renames)
 # Pin to specific version for reproducible builds
@@ -69,7 +70,8 @@ COPY moltbot.json.template /root/.clawdbot-templates/moltbot.json.template
 COPY skills/ /root/clawd/skills/
 
 # Install Playwright CLI skills into agent workspace
-RUN cd /root/clawd && playwright-cli install --skills
+# DISABLED: Requires Playwright CLI (disabled above)
+# RUN cd /root/clawd && playwright-cli install --skills
 
 # Set working directory
 WORKDIR /root/clawd
